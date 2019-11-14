@@ -37,9 +37,27 @@ class MLP(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    self.linearModules = []
+
+    first_output = n_classes if len(n_hidden) == 0 else int(n_hidden[0])
+    self.__network = [LinearModule(n_inputs, first_output)]
+    self.linearModules.append(self.__network[-1])
+    if len(n_hidden) > 0: self.__network.append(LeakyReLUModule(neg_slope))
+
+    for i in range(len(n_hidden)):
+
+      last = i == len(n_hidden) - 1
+
+      n_outputs = n_classes if last else n_hidden[i+1]
+
+      self.__network.append(LinearModule(n_hidden[i], n_outputs))
+      self.linearModules.append(self.__network[-1])
+      if not last:
+        self.__network.append(LeakyReLUModule(neg_slope))
+
+    self.__network.append(SoftMaxModule())
     ########################
-    # END OF YOUR CODE    #
+    # END OF YOUR CODE    #n_hidden
     #######################
 
   def forward(self, x):
@@ -59,7 +77,10 @@ class MLP(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    for module in self.__network:
+      x = module.forward(x)
+
+    out = x
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -80,7 +101,8 @@ class MLP(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    for module in reversed(self.__network):
+      dout = module.backward(dout)
     ########################
     # END OF YOUR CODE    #
     #######################

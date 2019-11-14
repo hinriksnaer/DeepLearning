@@ -12,6 +12,9 @@ import os
 from convnet_pytorch import ConvNet
 import cifar10_utils
 
+import torch
+from torch import nn
+
 # Default constants
 LEARNING_RATE_DEFAULT = 1e-4
 BATCH_SIZE_DEFAULT = 32
@@ -20,7 +23,7 @@ EVAL_FREQ_DEFAULT = 500
 OPTIMIZER_DEFAULT = 'ADAM'
 
 # Directory in which cifar data is saved
-DATA_DIR_DEFAULT = './cifar10/cifar-10-batches-py'
+DATA_DIR_DEFAULT = './code/cifar10/cifar-10-batches-py' #'./cifar10/cifar-10-batches-py'
 
 FLAGS = None
 
@@ -45,7 +48,15 @@ def accuracy(predictions, targets):
   ########################
   # PUT YOUR CODE HERE  #
   #######################
-  raise NotImplementedError
+  predictions = predictions.detach().numpy()
+  targets = targets.detach().numpy()
+  correct = 0
+  for i in range(len(predictions)):
+    
+    if np.argmax(predictions[i])== np.argmax(targets[i]):
+      correct += 1
+  
+  accuracy = correct/len(predictions)
   ########################
   # END OF YOUR CODE    #
   #######################
@@ -67,7 +78,50 @@ def train():
   ########################
   # PUT YOUR CODE HERE  #
   #######################
-  raise NotImplementedError
+
+  """
+  Initialize data module
+  """
+  cifar10=cifar10_utils.get_cifar10(DATA_DIR_DEFAULT)
+  x, y = cifar10['train'].next_batch(1)
+  x_test, y_test = cifar10['test'].next_batch(10000)
+
+  x_test = torch.tensor(x_test)
+  y_test = torch.tensor(y_test)
+
+  """
+  initialize the network
+  """
+  network = ConvNet(x.shape[1], y.shape[1])
+  crossEntropy = nn.CrossEntropyLoss()
+  
+  optimizer = None
+
+  optimizer = torch.optim.Adam(network.parameters(), lr=FLAGS.learning_rate, amsgrad=True)
+
+  for i in range(FLAGS.max_steps):
+    x, y = cifar10['train'].next_batch(FLAGS.batch_size)
+    x = torch.tensor(x)
+    y = torch.LongTensor(y)
+
+    prediction = network.forward(x)
+
+    loss = crossEntropy.forward(prediction, torch.max(y, 1)[1])
+
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+    if i%FLAGS.eval_freq == 0:
+      prediction = network.forward(x_test[0:100])
+      prediction = nn.functional.softmax(prediction)
+      print('Accuracy after '+ str(i) +' steps ' + str(accuracy(prediction, y_test)))
+
+  prediction = network.forward(x_test)
+  print('Final accuracy')
+  print(accuracy(prediction, y_test))
+
+
   ########################
   # END OF YOUR CODE    #
   #######################

@@ -49,7 +49,15 @@ def accuracy(predictions, targets):
   ########################
   # PUT YOUR CODE HERE  #
   #######################
-  raise NotImplementedError
+  predictions = predictions.detach().numpy()
+  targets = targets.detach().numpy()
+  correct = 0
+  for i in range(len(predictions)):
+    
+    if np.argmax(predictions[i])== np.argmax(targets[i]):
+      correct += 1
+  
+  accuracy = correct/len(predictions)
   ########################
   # END OF YOUR CODE    #
   #######################
@@ -88,13 +96,16 @@ def train():
   x = x.reshape(x.shape[0], -1)
   x_test = x_test.reshape(x_test.shape[0], -1)
 
+  x_test = torch.tensor(x_test)
+  y_test = torch.tensor(y_test)
+
   model = MLP(x.shape[1], dnn_hidden_units, y.shape[1], neg_slope)
 
   prediction = model.forward(torch.tensor(x[0]))
   crossEntropy = nn.CrossEntropyLoss()
   target = torch.tensor(y[0])
 
-  optimizer = torch.optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
+  optimizer = torch.optim.Adam(model.parameters(), lr=FLAGS.learning_rate, amsgrad=True)
 
   """
   batch gradient descent
@@ -112,23 +123,16 @@ def train():
     loss.backward()
     optimizer.step()
 
-    print(loss.item())
-
-
-
-    """
-    for linearModule in network.linearModules:
-      linearModule.params['weight'] = linearModule.params['weight'] - FLAGS.learning_rate * 1/FLAGS.batch_size * linearModule.grads['weight']
-      linearModule.params['bias'] = linearModule.params['bias'] - FLAGS.learning_rate * 1/FLAGS.batch_size * linearModule.grads['bias']
- 
     if i%FLAGS.eval_freq == 0:
-      prediction = network.forward(x_test)
- 
+      prediction = model.forward(x_test)
+      prediction = nn.functional.softmax(prediction)
       print('Accuracy after '+ str(i) +' steps ' + str(accuracy(prediction, y_test)))
-  prediction = network.forward(x_test)
+
+  prediction = model.forward(x_test)
   print('Final accuracy')
   print(accuracy(prediction, y_test))
-  """
+
+  
   ########################
   # END OF YOUR CODE    #
   #######################

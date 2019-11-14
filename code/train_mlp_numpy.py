@@ -22,7 +22,7 @@ EVAL_FREQ_DEFAULT = 100
 NEG_SLOPE_DEFAULT = 0.02
 
 # Directory in which cifar data is saved
-DATA_DIR_DEFAULT = './cifar10/cifar-10-batches-py'
+DATA_DIR_DEFAULT = './code/cifar10/cifar-10-batches-py' #'./cifar10/cifar-10-batches-py'
 
 FLAGS = None
 
@@ -47,7 +47,16 @@ def accuracy(predictions, targets):
   ########################
   # PUT YOUR CODE HERE  #
   #######################
-  raise NotImplementedError
+  assert len(predictions) == len(targets)
+
+  correct = 0
+  for i in range(len(predictions)):
+    
+    if np.argmax(predictions[i])== np.argmax(targets[i]):
+      correct += 1
+  
+  accuracy = correct/len(predictions)
+
   ########################
   # END OF YOUR CODE    #
   #######################
@@ -80,7 +89,49 @@ def train():
   ########################
   # PUT YOUR CODE HERE  #
   #######################
-  raise NotImplementedError
+  """
+  Initialize data module
+  """
+  cifar10=cifar10_utils.get_cifar10(DATA_DIR_DEFAULT)
+  x, y = cifar10['train'].next_batch(1)
+  x_test, y_test = cifar10['test'].next_batch(10000)
+  x = x.reshape(x.shape[0], -1)
+  x_test = x_test.reshape(x_test.shape[0], -1)
+  """
+  initialize the network
+  """
+  network = MLP(x.shape[1], dnn_hidden_units, y.shape[1], neg_slope)
+
+  
+  """
+  compute forward
+  """
+  
+  crossEntropy = CrossEntropyModule()
+
+  """
+  batch gradient descent
+  """
+  for i in range(FLAGS.max_steps):
+    x, y = cifar10['train'].next_batch(FLAGS.batch_size)
+    x = x.reshape(x.shape[0], -1)
+    prediction = network.forward(x)
+    loss = crossEntropy.forward(prediction, y)
+
+    gloss = crossEntropy.backward(prediction, y)
+    network.backward(gloss)
+
+    for linearModule in network.linearModules:
+      linearModule.params['weight'] = linearModule.params['weight'] - FLAGS.learning_rate * 1/FLAGS.batch_size * linearModule.grads['weight']
+      linearModule.params['bias'] = linearModule.params['bias'] - FLAGS.learning_rate * 1/FLAGS.batch_size * linearModule.grads['bias']
+
+    if i%FLAGS.eval_freq == 0:
+      prediction = network.forward(x_test)
+
+      print('Accuracy after '+ str(i) +' steps ' + str(accuracy(prediction, y_test)))
+  prediction = network.forward(x_test)
+  print('Final accuracy')
+  print(accuracy(prediction, y_test))
   ########################
   # END OF YOUR CODE    #
   #######################

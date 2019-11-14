@@ -52,12 +52,9 @@ class MLP(nn.Module):
 
       network.append(nn.LeakyReLU(neg_slope))
       network.append(nn.Linear(n_hidden[i], n_outputs))
-    
-    network.append(nn.Softmax())
 
     self.module_list = nn.ModuleList(network)
 
-    print('hello')
     ########################
     # END OF YOUR CODE    #
     #######################

@@ -37,7 +37,10 @@ class CustomBatchNormAutograd(nn.Module):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-
+    self.gamma = torch.nn.Parameter(data=torch.ones(n_neurons), requires_grad=True)
+    self.b = torch.nn.Parameter(data=torch.zeros(n_neurons), requires_grad=True)
+    self.eps = eps
+    self.n_neurons = n_neurons
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -60,7 +63,13 @@ class CustomBatchNormAutograd(nn.Module):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-
+    assert self.n_neurons == input.shape[1]
+    
+    batch_size = len(input)
+    mu = 1/(batch_size)*torch.sum(input, dim=0)
+    var = 1/(batch_size)*torch.sum((input-mu)**2, dim=0)
+    norm = (input-mu)/(torch.sqrt(var+self.eps))
+    out = norm * self.gamma + self.b
     ########################
     # END OF YOUR CODE    #
     #######################

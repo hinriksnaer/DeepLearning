@@ -22,13 +22,27 @@ class LinearModule(object):
     
     Also, initialize gradients with zeros.
     """
-    
+
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    self.params = {'weight': None, 'bias': None}
-    self.grads = {'weight': None, 'bias': None}
-    raise NotImplementedError
+
+    self.in_features = in_features
+    self.out_features = out_features
+
+    self.__MEAN = 0
+    self.__STD = 0.0001
+
+    self.params = {
+      'weight': np.random.normal(loc=self.__MEAN, scale=self.__STD, size=(out_features, in_features)), 
+      'bias': np.zeros(out_features),
+    }
+    self.grads = {
+      'weight': None, 
+      'bias': None,
+    }
+
+    self.input_cache = None
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -51,7 +65,8 @@ class LinearModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    self.input_cache = x
+    out = (self.params['weight'] @ x.T).T + self.params['bias']
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -75,7 +90,10 @@ class LinearModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    self.grads['weight'] = np.einsum('ij,jk->ik', dout.T, self.input_cache)
+    self.grads['bias'] = np.sum(dout, axis=0)
+
+    dx = dout @ self.params['weight']
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -100,7 +118,8 @@ class LeakyReLUModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    self.neg_slope = neg_slope
+    self.input_cache = None
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -123,7 +142,8 @@ class LeakyReLUModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    self.input_cache = x
+    out = np.maximum(0, x) + self.neg_slope*np.minimum(0, x)
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -146,7 +166,12 @@ class LeakyReLUModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+
+    leakyReLuDerivative = lambda x : 1 if x >= 0 else self.neg_slope
+    leakyReLuDerivative = np.vectorize(leakyReLuDerivative)
+
+    derivative = leakyReLuDerivative(self.input_cache)
+    dx = dout * derivative
     ########################
     # END OF YOUR CODE    #
     #######################    
@@ -158,6 +183,10 @@ class SoftMaxModule(object):
   """
   Softmax activation module.
   """
+
+  # Adding this might be redundant but it is cleaner to have it
+  def __init__(self):
+    self.input_cache = None
 
   def forward(self, x):
     """
@@ -177,10 +206,20 @@ class SoftMaxModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+
+    self.input_cache = x
+
+    def softmax(inputArr):
+      b = inputArr.max()
+      y = np.exp(inputArr - b)
+      return y / y.sum()
+
+    out = np.apply_along_axis(softmax, 1, x)
     ########################
     # END OF YOUR CODE    #
     #######################
+
+    self.output_cache = out
 
     return out
 
@@ -199,7 +238,16 @@ class SoftMaxModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+
+          
+    
+    xi = np.apply_along_axis(np.diag, 1, self.output_cache)
+    dx = np.einsum('ij,ik->ijk',self.output_cache,self.output_cache)
+
+    local_grad = xi-dx
+
+    dx = np.einsum('ij,ijk->ik', dout, local_grad)
+
     #######################
     # END OF YOUR CODE    #
     #######################
@@ -227,7 +275,8 @@ class CrossEntropyModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    individualLoss = y * np.log(x)
+    out = -np.sum(individualLoss)
     ########################
     # END OF YOUR CODE    #
     #######################
@@ -250,7 +299,7 @@ class CrossEntropyModule(object):
     ########################
     # PUT YOUR CODE HERE  #
     #######################
-    raise NotImplementedError
+    dx = y * -1/x
     ########################
     # END OF YOUR CODE    #
     #######################
