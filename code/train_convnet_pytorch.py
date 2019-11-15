@@ -23,7 +23,7 @@ EVAL_FREQ_DEFAULT = 500
 OPTIMIZER_DEFAULT = 'ADAM'
 
 # Directory in which cifar data is saved
-DATA_DIR_DEFAULT = './code/cifar10/cifar-10-batches-py' #'./cifar10/cifar-10-batches-py'
+DATA_DIR_DEFAULT = './cifar10/cifar-10-batches-py'
 
 FLAGS = None
 
@@ -48,8 +48,8 @@ def accuracy(predictions, targets):
   ########################
   # PUT YOUR CODE HERE  #
   #######################
-  predictions = predictions.detach().numpy()
-  targets = targets.detach().numpy()
+  predictions = predictions.cpu().detach().numpy()
+  targets = targets.cpu().detach().numpy()
   correct = 0
   for i in range(len(predictions)):
     
@@ -70,7 +70,11 @@ def train():
   TODO:
   Implement training and evaluation of ConvNet model. Evaluate your model on the whole test set each eval_freq iterations.
   """
-
+  if torch.cuda.is_available():  
+    dev = "cuda:0" 
+  else:  
+    dev = "cpu"  
+  device = torch.device(dev) 
   ### DO NOT CHANGE SEEDS!
   # Set the random seeds for reproducibility
   np.random.seed(42)
@@ -92,18 +96,17 @@ def train():
   """
   initialize the network
   """
-  network = ConvNet(x.shape[1], y.shape[1])
+  network = ConvNet(x.shape[1], y.shape[1]).to(device)
   crossEntropy = nn.CrossEntropyLoss()
   
   optimizer = None
 
   optimizer = torch.optim.Adam(network.parameters(), lr=FLAGS.learning_rate, amsgrad=True)
-
+  store_loss = None
   for i in range(FLAGS.max_steps):
     x, y = cifar10['train'].next_batch(FLAGS.batch_size)
-    x = torch.tensor(x)
-    y = torch.LongTensor(y)
-
+    x = torch.tensor(x).to(device)
+    y = torch.LongTensor(y).to(device)
     prediction = network.forward(x)
 
     loss = crossEntropy.forward(prediction, torch.max(y, 1)[1])
@@ -111,15 +114,41 @@ def train():
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
-
+    store_loss = loss.cpu()
+    del loss
+    del x
+    del y
+    del prediction
+    prediction_collection = None
     if i%FLAGS.eval_freq == 0:
-      prediction = network.forward(x_test[0:100])
-      prediction = nn.functional.softmax(prediction)
-      print('Accuracy after '+ str(i) +' steps ' + str(accuracy(prediction, y_test)))
+      with torch.no_grad():
+        print('Loss after '+str(i)+' steps '+str(store_loss))
+        for j in range(100):
+          test_data = x_test[j*100:j*100+100].to(device)
+          prediction = network.forward(test_data)
+          prediction = nn.functional.softmax(prediction)
+          del test_data
+          if j == 0:
+            prediction_collection = prediction
+          else:
+            prediction_collection = torch.cat((prediction_collection, prediction), 0)
+          del prediction
+        print('Accuracy after '+ str(i) +' steps ' + str(accuracy(prediction_collection, y_test)))
 
-  prediction = network.forward(x_test)
-  print('Final accuracy')
-  print(accuracy(prediction, y_test))
+  prediction_collection = None
+  with torch.no_grad():
+    print('final Loss',store_loss)
+    for j in range(100):
+      test_data = x_test[j*100:j*100+100].to(device)
+      prediction = network.forward(test_data).cpu()
+      prediction = nn.functional.softmax(prediction)
+      if j == 0:
+        prediction_collection = prediction
+      else:
+        prediction_collection = torch.cat((prediction_collection, prediction), 0)
+      del prediction
+    print('Final accuracy')
+    print(accuracy(prediction_collection, y_test))
 
 
   ########################

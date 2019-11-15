@@ -24,7 +24,7 @@ EVAL_FREQ_DEFAULT = 100
 NEG_SLOPE_DEFAULT = 0.02
 
 # Directory in which cifar data is saved
-DATA_DIR_DEFAULT = './code/cifar10/cifar-10-batches-py'#'./cifar10/cifar-10-batches-py'
+DATA_DIR_DEFAULT = './cifar10/cifar-10-batches-py'
 
 FLAGS = None
 
